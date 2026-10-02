@@ -1,0 +1,186 @@
+[
+  {
+    "id": "1a",
+    "formula": "C8H15Cl",
+    "centers": 3,
+    "isomers": 8,
+    "states": 3,
+    "smiles": "C[C@@H]1C[C@H](Cl)CC[C@@H]1C"
+  },
+  {
+    "id": "1b",
+    "formula": "C6H11Cl",
+    "centers": 2,
+    "isomers": 4,
+    "states": 2,
+    "smiles": "C[C@@H]1CC[C@@H](Cl)C1"
+  },
+  {
+    "id": "1c",
+    "formula": "C7H15BrO",
+    "centers": 2,
+    "isomers": 4,
+    "states": 2,
+    "smiles": "CCC[C@@H](Br)[C@@H](O)CC"
+  },
+  {
+    "id": "1d",
+    "formula": "C10H20O2",
+    "centers": 3,
+    "isomers": 8,
+    "states": 3,
+    "smiles": "CC(C)(C)[C@H]1CC[C@@H](O)[C@H](O)C1"
+  },
+  {
+    "id": "2",
+    "formula": "C4H10O2",
+    "centers": 2,
+    "isomers": 3,
+    "states": 3,
+    "smiles": "C[C@@H](O)[C@@H](C)O"
+  },
+  {
+    "id": "3a",
+    "formula": "C8H15Cl",
+    "centers": 3,
+    "isomers": 8,
+    "states": 3,
+    "smiles": "C[C@@H]1CC[C@@H](Cl)[C@H](C)C1"
+  },
+  {
+    "id": "3b",
+    "formula": "C7H12N2",
+    "centers": 2,
+    "isomers": 4,
+    "states": 3,
+    "smiles": "N#C[C@@H]1CCC[C@@H](N)C1"
+  },
+  {
+    "id": "4",
+    "formula": "C10H18",
+    "centers": 2,
+    "isomers": 2,
+    "states": 2,
+    "smiles": "C1CC[C@H]2CCCC[C@H]2C1"
+  },
+  {
+    "id": "5a",
+    "formula": "C9H13+",
+    "centers": 0,
+    "isomers": null,
+    "states": 4,
+    "smiles": "C=CC=C[C+](C)C=CC"
+  },
+  {
+    "id": "5b",
+    "formula": "C4H3O4-",
+    "centers": 0,
+    "isomers": null,
+    "states": 3,
+    "smiles": "O=C1OCC([O-])=C1O"
+  },
+  {
+    "id": "5c",
+    "formula": "C5H5O+",
+    "centers": 0,
+    "isomers": null,
+    "states": 6,
+    "smiles": "OC1=C[CH+]C=C1"
+  },
+  {
+    "id": "6a",
+    "formula": "C7H13Cl",
+    "centers": 2,
+    "isomers": 4,
+    "states": 4,
+    "smiles": "C[C@@H]1CCC[C@H](Cl)C1"
+  },
+  {
+    "id": "6b",
+    "formula": "C10H19Cl",
+    "centers": 3,
+    "isomers": 8,
+    "states": 3,
+    "smiles": "CC(C)[C@H]1CC[C@H](Cl)C[C@@H]1C"
+  },
+  {
+    "id": "6c",
+    "formula": "C8H16O",
+    "centers": 3,
+    "isomers": 8,
+    "states": 3,
+    "smiles": "C[C@H]1[C@H](C)CCC[C@@H]1O"
+  },
+  {
+    "id": "7a",
+    "formula": "C14H25N",
+    "centers": 3,
+    "isomers": 8,
+    "states": 3,
+    "smiles": "CC(C)[C@H]1C[C@H](C(C)(C)C)CC[C@@H]1C#N"
+  },
+  {
+    "id": "7b",
+    "formula": "C6H13NO",
+    "centers": 2,
+    "isomers": 4,
+    "states": 3,
+    "smiles": "N[C@H]1CCC[C@H](O)C1"
+  },
+  {
+    "id": "7c",
+    "formula": "C11H22",
+    "centers": 3,
+    "isomers": 8,
+    "states": 3,
+    "smiles": "CC(C)[C@@H]1CC[C@H](C)[C@@H](C)C1"
+  },
+  {
+    "id": "7d",
+    "formula": "C5H10O5",
+    "centers": 4,
+    "isomers": 16,
+    "states": 3,
+    "smiles": "O[C@@H]1[C@H](O)[C@H](O)CO[C@H]1O"
+  },
+  {
+    "id": "8a",
+    "formula": "C18H22O2",
+    "centers": 4,
+    "isomers": 16,
+    "states": 2,
+    "smiles": "C[C@]12CC[C@@H]3c4ccc(O)cc4CC[C@H]3[C@@H]1CCC2=O"
+  },
+  {
+    "id": "8b",
+    "formula": "C6H8O6",
+    "centers": 2,
+    "isomers": 4,
+    "states": 2,
+    "smiles": "O=C1O[C@H]([C@@H](O)CO)C(O)=C1O"
+  },
+  {
+    "id": "8c",
+    "formula": "C7H16O2",
+    "centers": 2,
+    "isomers": 3,
+    "states": 3,
+    "smiles": "CC[C@@H](O)C[C@@H](O)CC"
+  },
+  {
+    "id": "9a",
+    "formula": "C5H4O3",
+    "centers": 0,
+    "isomers": null,
+    "states": 4,
+    "smiles": "O=C(O)c1ccoc1"
+  },
+  {
+    "id": "9b",
+    "formula": "C3H4N2",
+    "centers": 0,
+    "isomers": null,
+    "states": 3,
+    "smiles": "c1c[nH]cn1"
+  }
+]
