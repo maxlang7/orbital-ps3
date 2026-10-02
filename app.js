@@ -52,8 +52,37 @@ function getState(){return current.states[stateIndex];}
 function point(i,state=getState()){return new THREE.Vector3(...state.atoms[i].p);}
 function midpoint(indices,state=getState()){return indices.reduce((v,i)=>v.add(point(i,state)),new THREE.Vector3()).divideScalar(indices.length);}
 function radius(e){return (spacefill?{H:.42,C:.72,O:.65,N:.67,Cl:.8,Br:.87}:{H:.16,C:.3,O:.31,N:.31,Cl:.38,Br:.4})[e]||.3;}
-function clearLabels(){for(const l of labelNodes)l.el.remove();labelNodes=[];}
-function addLabel(i,text,charge=false){const el=document.createElement('span');el.className='atom-label'+(charge?' charge':'');el.textContent=text;$('labels').append(el);labelNodes.push({i,el});}
+function clearLabels(){for(const l of labelNodes){l.el.remove();l.line.remove();}labelNodes=[];}
+function addLabel(i,text,charge=false){
+ const el=document.createElement('span');el.className='atom-label'+(charge?' charge':'');el.textContent=text;el.hidden=true;el.dataset.atom=String(i);$('labels').append(el);
+ const line=document.createElementNS('http://www.w3.org/2000/svg','line');line.dataset.atom=String(i);line.style.display='none';$('label-lines').append(line);
+ labelNodes.push({i,el,line,slot:0,charge});
+}
+function updateLabels(){
+ const w=stage.clientWidth,h=stage.clientHeight,placed=[];
+ const up=new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion);
+ for(const label of labelNodes){
+  const {el,line,i,charge}=label,m=modelMeshes.find(m=>m.userData.atom===i);
+  if(!m){el.hidden=true;line.style.display='none';continue;}
+  const p=m.position.clone().project(camera);
+  if(p.z< -1||p.z>1||Math.abs(p.x)>1||Math.abs(p.y)>1){el.hidden=true;line.style.display='none';continue;}
+  const x=(p.x*.5+.5)*w,y=(-p.y*.5+.5)*h;
+  const edge=m.position.clone().addScaledVector(up,m.scale.x).project(camera);
+  const distance=Math.abs(edge.y-p.y)*h*.5+19;
+  const offsets=[[0,-distance],[distance+5,0],[-distance-5,0],[0,distance],[distance,-distance],[-distance,-distance],[distance,distance],[-distance,distance],[0,-distance-32],[0,distance+32]];
+  const width=charge?35:27,height=25;
+  const order=[label.slot,...offsets.map((_,i)=>i).filter(i=>i!==label.slot)];
+  let chosen;
+  for(const slot of order){
+   const [dx,dy]=offsets[slot],cx=Math.max(width/2+5,Math.min(w-width/2-5,x+dx)),cy=Math.max(height/2+5,Math.min(h-height/2-5,y+dy));
+   const box={x:cx,y:cy,w:width,h:height};
+   if(!placed.some(b=>Math.abs(b.x-cx)<(b.w+width)/2+6&&Math.abs(b.y-cy)<(b.h+height)/2+6)){chosen=box;label.slot=slot;break;}
+  }
+  if(!chosen){el.hidden=true;line.style.display='none';continue;}
+  placed.push(chosen);el.hidden=false;el.style.left=`${chosen.x}px`;el.style.top=`${chosen.y}px`;
+  line.style.display='';line.setAttribute('x1',x);line.setAttribute('y1',y);line.setAttribute('x2',chosen.x);line.setAttribute('y2',chosen.y);
+ }
+}
 function rebuild(){
  if(!scene)return;
  if(molecule){molecule.traverse(o=>{if(o.userData.orbital)o.material.dispose();});scene.remove(molecule);}if(flowGroup)disposeFlow();
@@ -62,8 +91,8 @@ function rebuild(){
  for(const [i,a] of s.atoms.entries()){
   if(a.e==='H'&&!showH)continue;
   const mesh=new THREE.Mesh(sphereGeo,materials[a.e]||materials.C);mesh.position.set(...a.p);mesh.scale.setScalar(radius(a.e));mesh.userData.atom=i;molecule.add(mesh);modelMeshes.push(mesh);
-  if(a.q)addLabel(i,`${a.e}${i+1} ${a.q>0?'+':'−'}`,true);
-  else if(a.cip&&showStereo)addLabel(i,`${i+1} · ${a.cip}`);
+  if(a.q)addLabel(i,`${a.e}${a.q>0?'+':'−'}`,true);
+  else if(a.cip&&showStereo)addLabel(i,a.cip);
  }
  for(const [a,b,order] of s.bonds){
   if(!showH&&(s.atoms[a].e==='H'||s.atoms[b].e==='H'))continue;
@@ -105,21 +134,22 @@ function addElectronFlow(){
   const dot=new THREE.Mesh(new THREE.SphereGeometry(.055,10,8),new THREE.MeshBasicMaterial({color:0xffffff}));flowGroup.add(dot);flowDots.push({curve,dot});
  }
 }
-function resetView(){if(!camera)return;const s=getState();const max=Math.max(...s.atoms.filter(a=>a.e!=='H').map(a=>Math.hypot(...a.p)));const halfFov=Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*Math.min(1,camera.aspect));const distance=Math.max(8,(max+.45)/Math.sin(halfFov)*1.08);controls.target.set(0,0,0);camera.position.copy(new THREE.Vector3(.6,-.9,.75).normalize().multiplyScalar(distance));camera.up.set(0,0,1);controls.update();}
+function resetView(){if(!camera)return;const s=getState();const max=Math.max(...s.atoms.filter(a=>a.e!=='H').map(a=>Math.hypot(...a.p)));const halfFov=Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*Math.min(1,camera.aspect));const distance=Math.max(8,(max+.45)/Math.sin(halfFov)*1.08)*(camera.aspect>=1.5?.82:1);controls.target.set(0,0,0);camera.position.copy(new THREE.Vector3(.6,-.9,.75).normalize().multiplyScalar(distance));camera.up.set(0,0,1);controls.update();}
 function animate(time=0){
  requestAnimationFrame(animate);if(document.hidden)return;
  if(tween){const p=Math.min((time-tween.start)/tween.duration,1);const t=p*p*(3-2*p);for(const m of modelMeshes){const i=m.userData.atom;m.position.lerpVectors(tween.from[i],tween.to[i],t);}updateBonds();if(p===1)tween=null;}
- for(const {el,i} of labelNodes){const m=modelMeshes.find(m=>m.userData.atom===i);if(!m){el.hidden=true;continue;}const p=m.position.clone();p.z+=.46;p.project(camera);el.hidden=p.z>1||p.z< -1;el.style.left=`${(p.x*.5+.5)*stage.clientWidth}px`;el.style.top=`${(-p.y*.5+.5)*stage.clientHeight}px`;}
+ // The camera and labels must use the same frame, including damping and auto-spin.
+ controls?.update();camera?.updateMatrixWorld();if(current)updateLabels();
  if(!reduced)for(const {dot,curve} of flowDots)dot.position.copy(curve.getPoint((time*.0004)%1));
- controls?.update();renderer?.render(scene,camera);
+ renderer?.render(scene,camera);
 }
 function pickAtom(e){
  const rect=renderer.domElement.getBoundingClientRect();const ray=new THREE.Raycaster();ray.setFromCamera(new THREE.Vector2((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1),camera);
  const hit=ray.intersectObjects(modelMeshes)[0];if(!hit)return;const i=hit.object.userData.atom;selectedAtom=i;const a=getState().atoms[i];
- $('atom-info').textContent=`${names[a.e]} ${i+1} · ${a.cip?`${a.cip} stereocenter`:'not a tetrahedral stereocenter'} · charge ${a.q>0?'+':''}${a.q}`;
+ $('atom-info').textContent=`${names[a.e]} ${i+1}${a.cip?` · ${a.cip}`:''}${a.q?` · ${a.q>0?'+':''}${a.q}`:''}`;
 }
 function setState(index){
- const prev=getState();stateIndex=index;selectedAtom=null;$('atom-info').textContent='Click an atom to get acquainted.';
+ const prev=getState();stateIndex=index;selectedAtom=null;$('atom-info').textContent='';
  const next=getState();rebuild();
  if(scene&&!reduced&&current.kind==='chair'&&index<2&&prev.atoms.length===next.atoms.length){tween={from:prev.atoms.map(a=>new THREE.Vector3(...a.p)),to:next.atoms.map(a=>new THREE.Vector3(...a.p)),start:performance.now(),duration:750};}
  else tween=null;
@@ -133,33 +163,33 @@ function selectScene(id,scroll=false){
  visited.add(current.id);try{localStorage.setItem('orbital.visited',JSON.stringify([...visited]));}catch{}
  $('visited-count').textContent=data.filter(s=>visited.has(s.id)).length;
  $('part-tag').textContent=`${String(current.problem).padStart(2,'0')} / ${current.id.slice(1).toUpperCase()||'ALL'}`;
- $('kind-tag').textContent=current.subtitle.toUpperCase();$('scene-title').textContent=current.title;$('task').textContent=current.task;$('takeaway').textContent=current.takeaway;
+ $('scene-title').textContent=current.title;$('task').textContent=current.task;$('takeaway').textContent=current.takeaway;
  $('formula').innerHTML=current.formula.replace(/(\d+)/g,'<sub>$1</sub>');$('center-count').textContent=['resonance','acid','decalin'].includes(current.kind)?'—':current.centers;
  $('isomer-count').textContent=current.isomers??current.states.length;$('isomer-label').textContent=current.isomers?'stereoisomers':'model states';
  $('model-note').textContent=['resonance','acid'].includes(current.kind)?'Resonance contributors share one nuclear framework. Electron arrows refer to the indicated parent contributor; they do not show molecules changing back and forth in time.':current.kind==='chair'?'Idealized teaching geometry. Chair animations illustrate axial/equatorial exchange, not the physical transition pathway. Comparisons use qualitative steric penalties.':'Molecular conformations are models, not crystal structures. R/S describes configuration; rotating the camera does not change it.';
  $('part-tabs').replaceChildren(...data.filter(s=>s.problem===current.problem).map(s=>button(s.id.slice(1).toUpperCase()||'ALL',()=>navigate(s.id),s.id===current.id)));
  document.querySelectorAll('.problem-nav button').forEach((b,i)=>{b.classList.toggle('active',i+1===current.problem);b.setAttribute('aria-pressed',String(i+1===current.problem));});
- $('atom-info').textContent='Click an atom to get acquainted.';rebuild();resetView();renderStateControls();renderProjection();
+ $('atom-info').textContent='';rebuild();resetView();renderStateControls();renderProjection();
  if(scroll)$('playground').scrollIntoView({behavior:reduced?'instant':'smooth'});
  document.title=`PS3 ${current.id.toUpperCase()} · ${current.title} — Orbital`;
 }
 function navigate(id){location.hash=`p=${id}`;}
 function renderStateControls(){
- const s=getState();$('formula').innerHTML=(s.formula||current.formula).replace(/(\d+)/g,'<sub>$1</sub>');$('control-label').textContent={chair:'FLIP IT. REFLECT IT. MAKE IT CLICK.',resonance:'SAME ATOMS. DIFFERENT ELECTRONS.',acid:'ADD A PROTON. EXPLORE THE CHARGE.',decalin:'CHECK THE BRIDGEHEAD HYDROGENS.',fischer:'THREE FORMS. TWO RELATIONSHIPS.'}[current.kind]||'A DIFFERENT POINT OF VIEW';
- $('state-count').textContent=`${stateIndex+1} / ${current.states.length}`;
- $('state-buttons').replaceChildren(...current.states.map((v,i)=>button(v.label,()=>setState(i),i===stateIndex)));
+ const s=getState();$('formula').innerHTML=(s.formula||current.formula).replace(/(\d+)/g,'<sub>$1</sub>');
+
+ $('state-buttons').replaceChildren(...current.states.map((v,i)=>{const short=v.label.replace('As drawn','Original').replace('Flipped chair','Flip').replace('Mirror image','Mirror').replace(/^Neutral .*/, 'Neutral').replace(/^(Protonated|Imidazolium) · contributor /,'H⁺ · ').replace('Contributor ','').replace('Chair A','Chair');const b=button(short,()=>setState(i),i===stateIndex);b.title=v.label;b.setAttribute('aria-label',v.label);return b;}));
  $('special-controls').replaceChildren();
- if(current.axes){current.axes.forEach(([a,b],i)=>$('special-controls').append(button(`Newman ${a+1} → ${b+1}`,()=>{axisIndex=i;alignAxis(a,b);renderProjection();},false)));$('special-controls').append(button('Free view',resetView));}
- if(['resonance','acid'].includes(current.kind))$('special-controls').append(button(orbitals?'Hide p orbitals':'Show p orbitals',()=>{orbitals=!orbitals;rebuild();renderStateControls();},orbitals));
- if(current.kind==='decalin')$('special-controls').append(button(showH?'Hide H atoms':'Show bridgehead H',()=>{showH=!showH;$('hydrogens').setAttribute('aria-pressed',String(showH));rebuild();renderStateControls();}));
+ if(current.axes){current.axes.forEach(([a,b],i)=>$('special-controls').append(button(`Newman ${a+1} → ${b+1}`,()=>{axisIndex=i;alignAxis(a,b);$('projection-panel').open=true;renderProjection();},false)));$('special-controls').append(button('Free view',resetView));}
+ if(['resonance','acid'].includes(current.kind))$('special-controls').append(button('p orbitals',()=>{orbitals=!orbitals;rebuild();renderStateControls();},orbitals));
+ if(current.kind==='decalin')$('special-controls').append(button('Bridgehead H',()=>{showH=!showH;$('hydrogens').setAttribute('aria-pressed',String(showH));rebuild();renderStateControls();}));
  const detail=$('state-detail');detail.replaceChildren();
- if(s.substituents){for(const sub of s.substituents){const span=document.createElement('span');span.className=sub.position;span.textContent=`${sub.group} · ${sub.position} ${sub.side}`;detail.append(span);}if(stateIndex<2){const preferred=current.states[0].strain<=current.states[1].strain?0:1;const p=document.createElement('div');p.textContent=stateIndex===preferred?'✓ Lower axial-group penalty of these two chairs.':'↗ Flip to reduce the axial-group penalty.';detail.append(p);}}
+ if(s.substituents){for(const sub of s.substituents){const span=document.createElement('span');span.className=sub.position;span.textContent=`${sub.group} ${sub.position==='axial'?'ax':'eq'} ${sub.side==='up'?'↑':'↓'}`;detail.append(span);}if(stateIndex<2){const preferred=current.states[0].strain<=current.states[1].strain?0:1;const p=document.createElement('div');p.textContent=stateIndex===preferred?'Lower strain':'Higher strain';detail.append(p);}}
  else if(current.kind==='resonance'||current.kind==='acid'){
-  const charge=s.atoms.reduce((n,a)=>n+a.q,0);detail.textContent=`Net charge ${charge>0?'+':''}${charge}. `;
-  if(s.parent!=null)detail.textContent+=`Arrows show electron flow from contributor ${s.parent+1} to this contributor. `;
-  if(current.kind==='acid')detail.textContent+=stateIndex===0?'Start with the neutral molecule and HCl.':current.acidNote||'H⁺ has transferred to nitrogen; chloride is the counterion.';
- }else if(current.kind==='decalin')detail.textContent=s.label.startsWith('trans')?'Locked junction: an ordinary ring flip is not available.':'Flexible junction: cis-decalin can interconvert between chair-chair forms.';
- else detail.textContent=current.kind==='fischer'?(stateIndex===2?'Meso: R,S and S,R describe the same stereoisomer.':'RR and SS are a non-superimposable mirror pair.'):'Try dragging to compare the spatial arrangement. A reflection changes configuration; a rotation does not.';
+  const charge=s.atoms.reduce((n,a)=>n+a.q,0);detail.textContent=`Charge ${charge>0?'+':''}${charge}`;
+  if(s.parent!=null)detail.textContent+=` · ${s.parent+1} → ${stateIndex+(current.kind==='acid'?0:1)}`;
+  if(current.acidNote&&stateIndex>0)detail.textContent+=' · illustrative pathway';
+ }else if(current.kind==='decalin')detail.textContent=s.label.startsWith('trans')?'Locked':'Flexible';
+ else detail.textContent=current.kind==='fischer'?(stateIndex===2?'Meso':'Enantiomers'):'';
 }
 function alignAxis(a,b){if(!camera)return;const front=point(a),back=point(b);const dir=front.clone().sub(back).normalize();controls.target.copy(front.clone().add(back).multiplyScalar(.5));camera.position.copy(controls.target).addScaledVector(dir,10);camera.up.set(0,0,1);if(Math.abs(dir.z)>.95)camera.up.set(0,1,0);controls.update();}
 
@@ -213,7 +243,7 @@ function flatRing(s){
 
 $('hydrogens').onclick=()=>{showH=!showH;$('hydrogens').setAttribute('aria-pressed',String(showH));rebuild();};
 $('stereo-labels').onclick=()=>{showStereo=!showStereo;$('stereo-labels').setAttribute('aria-pressed',String(showStereo));rebuild();};
-$('spacefill').onclick=()=>{spacefill=!spacefill;$('spacefill').setAttribute('aria-pressed',String(spacefill));$('stage-mode').textContent=spacefill?'/ SPACE FILL':'/ BALL + STICK';rebuild();};
+$('spacefill').onclick=()=>{spacefill=!spacefill;$('spacefill').setAttribute('aria-pressed',String(spacefill));rebuild();};
 $('auto-rotate').onclick=()=>{if(!controls)return;controls.autoRotate=!controls.autoRotate;$('auto-rotate').setAttribute('aria-pressed',String(controls.autoRotate));};
 $('reset-view').onclick=resetView;
 $('fullscreen').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen();else document.querySelector('.experiment').requestFullscreen?.().catch(()=>{});};
@@ -222,8 +252,7 @@ window.addEventListener('hashchange',()=>{const m=location.hash.match(/^#p=([1-9
 try{
  const response=await fetch('./assets/molecules.json');if(!response.ok)throw new Error(`Molecular data returned ${response.status}`);data=await response.json();
  document.querySelector('.problem-nav').replaceChildren(...problemNames.map((n,i)=>{const b=button('',()=>navigate(data.find(s=>s.problem===i+1).id));b.innerHTML=`<strong>${String(i+1).padStart(2,'0')}</strong><span>${n}</span>`;b.setAttribute('aria-label',`Problem ${i+1}: ${n}`);return b;}));
- $('directory').replaceChildren(...data.map(s=>{const a=document.createElement('a');a.href=`#p=${s.id}`;a.innerHTML=`<b>${s.id.toUpperCase()}</b>${s.title}<span>↗</span>`;return a;}));
  setup3D();selectScene(location.hash.match(/^#p=([1-9][a-d]?)$/)?.[1]||'1a');$('loading').hidden=true;
  // Lightweight public state for browser checks; never holds student information.
- window.orbital={get current(){return current.id;},get state(){return stateIndex;},get atoms(){return modelMeshes.length;},get sceneCount(){return data.length;},get webgl(){return !!renderer;}};
+ window.orbital={get current(){return current.id;},get state(){return stateIndex;},get atoms(){return modelMeshes.length;},get sceneCount(){return data.length;},get webgl(){return !!renderer;},get labelAnchors(){return modelMeshes.filter(m=>labelNodes.some(l=>l.i===m.userData.atom)).map(m=>{const p=m.getWorldPosition(new THREE.Vector3()).project(camera);return {i:m.userData.atom,x:(p.x*.5+.5)*stage.clientWidth,y:(-p.y*.5+.5)*stage.clientHeight};});}};
 }catch(error){$('loading').textContent='Could not load the molecules. Please reload the page.';console.error(error);}
